@@ -1,0 +1,76 @@
+name: GCP Terraform
+
+# Validation only. No credentials, no plan against real state and no apply:
+# remote plans and reviewed applies are added once the state backend and
+# executor are selected (ADR-0002).
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/gcp-terraform.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/gcp-terraform.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Secret and ownership guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: No secret payloads in Terraform (ADR-0003)
+        run: |
+          set -euo pipefail
+          # Secret values must never pass through Terraform state or plans.
+          if grep -rnE 'resource "google_secret_manager_secret_version"|data "google_secret_manager_secret_version"|resource "random_password"|resource "google_service_account_key"' terraform/; then
+            echo "::error::Secret payloads or service-account keys are not allowed in terraform/ (ADR-0003)."
+            exit 1
+          fi
+
+      - name: No committed tfvars
+        run: |
+          set -euo pipefail
+          if git ls-files 'terraform/*.tfvars' | grep -q .; then
+            echo "::error::Commit only *.tfvars.example; real values are supplied to the selected executor."
+            exit 1
+          fi
+
+  validate:
+    name: Validate (${{ matrix.root }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        root:
+          - terraform/envs/platform/foundation
+          - terraform/envs/staging/foundation
+          - terraform/envs/prod/foundation
+    defaults:
+      run:
+        working-directory: ${{ matrix.root }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+
+      - name: Format
+        run: terraform fmt -check -recursive ${{ github.workspace }}/terraform
+
+      - name: Init (no backend, locked providers)
+        run: terraform init -backend=false -input=false -lockfile=readonly
+
+      - name: Validate
+        run: terraform validate -no-color
