@@ -2,6 +2,12 @@
 
 Terraform IaC for the CloudAnzen platform. Manages Vercel projects, Cloudflare DNS, and GitHub repository settings.
 
+## New GCP platform design
+
+The [IaC/GitOps implementation plan](docs/iac-gitops-implementation-plan.md) is the canonical plan for the new GCP platform. The [architecture decision records](docs/adr/README.md) cover deployment ownership, state/execution, secrets, tenant subdomains/onboarding and the future Firebase authentication migration.
+
+These documents describe planned work. The existing roots and setup instructions below describe the legacy implementation; the documentation change does not provision GCP resources or replace the current deployment. New GCP state and credentials must follow the plan's inventory and selection gates.
+
 ## Structure
 
 ```

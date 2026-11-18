@@ -1,10 +1,21 @@
 name: Terraform
 
+# Legacy roots only. New GCP roots (terraform/, gitops/, charts/) and docs/
+# must never trigger these legacy plans/applies.
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'environments/**'
+      - 'modules/**'
+      - '.github/workflows/terraform.yml'
+  # The workflow file itself is deliberately absent here: editing it must not
+  # trigger a legacy apply on merge.
   push:
     branches: [main]
+    paths:
+      - 'environments/**'
+      - 'modules/**'
 
 permissions:
   contents: read
