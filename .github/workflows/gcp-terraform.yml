@@ -5,7 +5,6 @@ name: GCP Terraform
 # executor are selected (ADR-0002).
 on:
   pull_request:
-    branches: [main]
     paths:
       - 'terraform/**'
       - '.github/workflows/gcp-terraform.yml'
