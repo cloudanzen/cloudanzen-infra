@@ -1,0 +1,10 @@
+# Uploaded to HCP Terraform for CLI-driven runs (repository root, because
+# workspaces set a working directory). Patterns are anchored with a leading
+# slash so terraform/modules is still uploaded.
+/.git/
+**/.terraform/
+/docs/
+/scripts/
+/environments/
+/modules/
+*.tfvars
