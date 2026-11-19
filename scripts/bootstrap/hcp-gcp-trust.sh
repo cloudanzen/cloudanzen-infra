@@ -19,6 +19,10 @@ set -euo pipefail
 PROJECT_ID="${PROJECT_ID:-cloudanzen-gke}"
 HCP_ORG="${HCP_ORG:-cloudanzen}"
 WORKSPACES="${WORKSPACES:-gcp-org-projects gcp-platform-foundation gcp-staging-foundation gcp-prod-foundation}"
+# Environment projects that already exist (for example created in the
+# console). Projects created by Terraform make the apply identity owner
+# automatically; pre-existing ones need the grant below.
+ENV_PROJECTS="${ENV_PROJECTS:-cloudanzen-staging cloudanzen-prod}"
 
 POOL_ID="hcp-terraform"
 PROVIDER_ID="hcp-terraform"
@@ -110,6 +114,13 @@ gcloud organizations add-iam-policy-binding "$ORG_ID" \
   --condition=None >/dev/null
 gcloud billing accounts add-iam-policy-binding "$BILLING_ACCOUNT" \
   --member "serviceAccount:${APPLY_SA}" --role roles/billing.user >/dev/null
+for env_project in $ENV_PROJECTS; do
+  if gcloud projects describe "$env_project" >/dev/null 2>&1; then
+    gcloud projects add-iam-policy-binding "$env_project" \
+      --member "serviceAccount:${APPLY_SA}" --role roles/owner --condition=None >/dev/null
+    echo "    apply identity is owner of existing project ${env_project}"
+  fi
+done
 
 cat <<EOF
 
