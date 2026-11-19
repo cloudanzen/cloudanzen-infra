@@ -13,3 +13,8 @@ terraform.rc
 
 # macOS
 .DS_Store
+
+# New GCP roots track their provider lock files (plan section 2).
+!terraform/**/.terraform.lock.hcl
+# Real values for new GCP roots are supplied to the executor, not committed.
+terraform/**/*.tfvars
