@@ -1,4 +1,4 @@
 # Copy to terraform.tfvars with the confirmed non-secret values.
 # Secrets never go in tfvars (ADR-0003).
 project_id = "cloudanzen-gke"
-region     = "europe-west1"
+region     = "asia-northeast1"

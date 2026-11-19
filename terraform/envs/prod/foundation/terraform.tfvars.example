@@ -1,4 +1,4 @@
 # Copy to terraform.tfvars with the confirmed non-secret values.
 project_id         = "cloudanzen-prod"
 cluster_project_id = "cloudanzen-gke"
-region             = "europe-west1"
+region             = "asia-northeast1"

@@ -49,6 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         root:
+          - terraform/envs/org/projects
           - terraform/envs/platform/foundation
           - terraform/envs/staging/foundation
           - terraform/envs/prod/foundation

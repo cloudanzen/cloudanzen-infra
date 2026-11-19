@@ -1,0 +1,3 @@
+# Supply as HCP workspace variables (not committed: public repository).
+org_id          = "<gcp-organization-id>"
+billing_account = "<billing-account-id>"

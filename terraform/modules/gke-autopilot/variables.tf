@@ -57,19 +57,19 @@ variable "release_channel" {
 variable "maintenance_start_time" {
   description = "RFC 3339 start of the recurring maintenance window."
   type        = string
-  default     = "2026-01-03T02:00:00Z"
+  default     = "2026-01-02T17:00:00Z"
 }
 
 variable "maintenance_end_time" {
   description = "RFC 3339 end of the recurring maintenance window."
   type        = string
-  default     = "2026-01-03T08:00:00Z"
+  default     = "2026-01-02T23:00:00Z"
 }
 
 variable "maintenance_recurrence" {
-  description = "RRULE for the maintenance window."
+  description = "RRULE for the maintenance window. Defaults to Fri and Sat 17:00-23:00 UTC (Sat and Sun 02:00-08:00 JST); GKE needs at least 48h per 32 days in windows of 4h or more."
   type        = string
-  default     = "FREQ=WEEKLY;BYDAY=SA"
+  default     = "FREQ=WEEKLY;BYDAY=FR,SA"
 }
 
 variable "labels" {
