@@ -11,6 +11,6 @@ The [IaC/GitOps implementation plan](../iac-gitops-implementation-plan.md) is th
 | [0003](0003-secret-authority-and-delivery.md) | Secret Manager + ESO; secret payloads excluded from Terraform | Accepted direction | Database rotation and private-Git bootstrap validation |
 | [0004](0004-tenant-hostnames-and-onboarding.md) | Organization-specific hostnames, one shared backend, platform-led onboarding | Accepted target architecture; customer rollout deferred | Exact domain suffix, registry/session implementation and isolation tests |
 | [0005](0005-firebase-identity-platform-migration.md) | Future Firebase Authentication with Identity Platform; CloudAnzen retains authorization | Accepted migration direction; detailed cutover design pending | Tenant/SSO/callback spike, user/MFA migration design, pricing and cutover approval |
-| [0006](0006-interim-single-cluster-topology.md) | One shared GKE cluster: staging and production namespaces; per-environment projects for secrets/data | Accepted (interim); supersedes ADR-0001 cluster topology | Second-cluster triggers; upgrade testing on a temporary cluster |
+| [0006](0006-interim-single-cluster-topology.md) | One shared GKE cluster: staging and production namespaces; per-environment projects for secrets/data | Accepted; supersedes ADR-0001 cluster topology | Upgrade testing on a temporary cluster; namespace isolation tests |
 
 The current Railway deployment remains outside this project. Documentation in this directory does not authorize its retirement or an authentication cutover.

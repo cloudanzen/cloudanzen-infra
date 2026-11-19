@@ -1,12 +1,12 @@
-# ADR-0006: Interim single GKE cluster for staging and production
+# ADR-0006: Single GKE cluster for staging and production
 
 - Date: 2026-11-18
-- Status: Accepted (interim); supersedes the cluster-topology part of [ADR-0001](0001-gcp-platform-and-delivery-ownership.md)
+- Status: Accepted (amended 2026-11-19: no second cluster planned); supersedes the cluster-topology part of [ADR-0001](0001-gcp-platform-and-delivery-ownership.md)
 - Plan: [IaC/GitOps implementation plan](../iac-gitops-implementation-plan.md)
 
 ## Context
 
-ADR-0001 chose separate GCP projects and GKE Autopilot clusters for staging and production. The product owner decided to start with **one cluster** to reduce cost and setup effort, hosting both staging and production by namespace, and to add the second cluster later. A second cluster's management fee is about $73/month; the GKE free-tier credit ($74.40/month per billing account) covers one cluster ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing)).
+ADR-0001 chose separate GCP projects and GKE Autopilot clusters for staging and production. The product owner decided on **one cluster** for both staging and production, separated by namespace, and does not want a second cluster: its management fee is about $73/month, while the GKE free-tier credit ($74.40/month per billing account) covers one cluster ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing)).
 
 ## Decision
 
@@ -33,13 +33,13 @@ Run one GKE Autopilot cluster in a dedicated platform project. Staging and produ
 - **Compliance.** Environment separation (for example ISO/IEC 27001:2022 control A.8.31) is implemented through namespaces, separate projects for secrets and data, and access controls. Document this; an auditor or customer may require physical cluster separation.
 - **Cost.** One cluster fee, offset by the free-tier credit.
 
-## Triggers for the second cluster
+## When to revisit
 
-Create a dedicated production cluster with the same Terraform module when any of these occurs, and in any case before general availability:
+A second cluster is **not planned**. Adding one requires a new ADR and an explicit product-owner decision, including its cost. These signals should prompt that review, without committing to it:
 
 - a customer contract or audit requires separate production infrastructure;
 - a platform upgrade or operator incident affects production;
 - production resource use or scheduling pressure affects reliability;
 - the number of production tenants exceeds an agreed threshold.
 
-Migration path: provision the new cluster from the same modules, restore the production CloudNativePG cluster from its backup into the new cluster, switch DNS, then remove the production namespace from the shared cluster. Staging remains on the original cluster.
+If a second cluster is ever approved, the migration path is: provision the new cluster from the same modules, restore the production CloudNativePG cluster from its backup into the new cluster, switch DNS, then remove the production namespace from the shared cluster. Staging remains on the original cluster.

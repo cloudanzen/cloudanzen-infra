@@ -51,7 +51,7 @@ The existing Railway/Vercel deployment remains out of scope. Preserve its roots,
 | [0003](adr/0003-secret-authority-and-delivery.md) | Secret Manager + ESO; containers/IAM only in Terraform | CNPG password convergence, rotation and initial Argo Git access |
 | [0004](adr/0004-tenant-hostnames-and-onboarding.md) | Platform-led onboarding, registered tenant hosts, shared backend, host-bound access | Exact DNS suffix and later registry/session/provisioning implementation |
 | [0005](adr/0005-firebase-identity-platform-migration.md) | Firebase/Identity Platform target; application authorization retained | Callbacks, import/MFA/session strategy, account-link policy, limits and costs |
-| [0006](adr/0006-interim-single-cluster-topology.md) | One shared GKE cluster now: staging/prod namespaces, per-environment projects for secrets and data | Second-cluster triggers; platform upgrades tested on a temporary cluster |
+| [0006](adr/0006-interim-single-cluster-topology.md) | One shared GKE cluster: staging/prod namespaces, per-environment projects for secrets and data | Platform upgrades tested on a temporary cluster; namespace isolation tests |
 
 Accepted direction does not imply completed validation. Record decisions and evidence for each open item before its dependent apply or rollout.
 
@@ -109,7 +109,7 @@ flowchart TD
     QA --> PRODPR[Reviewed production promotion PR, same digests]
 ```
 
-**Interim topology ([ADR-0006](adr/0006-interim-single-cluster-topology.md)):** one GKE Autopilot cluster hosts both environments in separate namespaces (`cloudanzen-staging`, `cloudanzen-prod`). The cluster, registry, VPC and Cloud NAT live in a platform project (`cloudanzen-gke`, candidate ID). Secrets, backup buckets and environment service accounts live in per-environment projects (`cloudanzen-staging`, `cloudanzen-prod`), so staging identities have no access to production secrets or data. A dedicated production cluster is added later, from the same Terraform module, when an ADR-0006 trigger occurs and in any case before general availability. Region, organization/folder, billing account and domain suffix are explicit inputs.
+**Topology ([ADR-0006](adr/0006-interim-single-cluster-topology.md)):** one GKE Autopilot cluster hosts both environments in separate namespaces (`cloudanzen-staging`, `cloudanzen-prod`). The cluster, registry, VPC and Cloud NAT live in a platform project (`cloudanzen-gke`, candidate ID). Secrets, backup buckets and environment service accounts live in per-environment projects (`cloudanzen-staging`, `cloudanzen-prod`), so staging identities have no access to production secrets or data. There is one cluster only; a second (dedicated production) cluster is not planned and would need a new, explicit decision by the product owner. Region, organization/folder, billing account and domain suffix are explicit inputs.
 
 The one Argo instance in `argocd` uses a separate `AppProject` per environment, restricting each to its own Git path and namespace; staging changes cannot target production. Namespaces have default-deny network policies, quotas, and a higher priority class for production. Cluster upgrades and cluster-wide operators affect both environments at once, so platform upgrades are tested on a temporary cluster first. State and recovery credentials remain outside the cluster. Standard tenants share services within their environment, with tenant-aware application/database isolation.
 
@@ -357,7 +357,7 @@ No account action is required to review these documents. The implementation agen
 
 | Driver | Assumption per environment | Price basis |
 | --- | --- | --- |
-| GKE cluster management fee | 1 shared Autopilot cluster (ADR-0006) | $0.10 per cluster-hour (about $73/month), offset by the $74.40/month credit per billing account, so roughly no net fee for one cluster. The later production cluster adds about $73/month ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing)) |
+| GKE cluster management fee | 1 shared Autopilot cluster (ADR-0006) | $0.10 per cluster-hour (about $73/month), offset by the $74.40/month credit per billing account, so roughly no net fee. No second cluster is planned ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing)) |
 | Autopilot workload requests | API 2 pods, worker 1–2, frontend 2, CNPG 3 instances, Redis 1, Argo/ESO/cert-manager/CNPG controllers | Billed per requested vCPU, memory and ephemeral storage. Size from measured staging requests; staging can run smaller requests and fewer replicas |
 | Persistent disks | 3 CNPG volumes plus WAL, 1 Redis volume | Compute Engine Persistent Disk/Hyperdisk rates |
 | Backups | Barman base backups and WAL in GCS with retention | Cloud Storage class, operations and retention |
@@ -387,7 +387,6 @@ Assumes two engineers at about 70% availability (about 7 engineer-days per week 
 | Namespace isolation for the shared cluster (AppProjects, quotas, priority classes, per-namespace SecretStores, isolation tests) | 3 | 4 | 6 |
 | **M1 staging total** | **42** | **62** | **94** |
 | Production gate (production namespace, project, data apps, values, review) | 5 | 8 | 12 |
-| Later: dedicated production cluster (ADR-0006 trigger) | 5 | 8 | 12 |
 
 At about 7 engineer-days per week, the expected M1 staging total is about 9 weeks of capacity. With dependency waits (GCP access, OAuth registrations, spike results) plan for 10–13 weeks. Confidence is low to medium until the spike pins the database and bootstrap versions. Re-estimate after the first sprint.
 
@@ -397,7 +396,7 @@ At about 7 engineer-days per week, the expected M1 staging total is about 9 week
 | --- | --- | --- |
 | Customer host suffix and staging suffix | **Decided:** `*.app.cloudanzen.com` and `*.staging.app.cloudanzen.com` | — |
 | Canary and admin hostnames | **Decided:** `app.cloudanzen.com` (canary) and `platform.cloudanzen.com` (admin) after a planned cutover; temporary `app-next`/`platform-next` names until then | Cutover approval and a new home for legacy users |
-| Cluster topology | **Decided:** one shared cluster now (ADR-0006); dedicated production cluster on an ADR-0006 trigger | Before general availability at the latest |
+| Cluster topology | **Decided:** one shared cluster for staging and production (ADR-0006); no second cluster planned | — |
 | Terraform state backend | Keep HCP Terraform Free while under 500 managed resources; documented GCS backend as the alternative | PR4 |
 | Region | One region close to initial customers and data-residency needs, for example `europe-west1` or `us-central1`; confirm with the account owner | PR4 |
 | PostgreSQL and pgvector | PostgreSQL 18 with the CNPG pgvector extension image if the spike confirms Autopilot support; otherwise an image with pgvector built in | PR7 |

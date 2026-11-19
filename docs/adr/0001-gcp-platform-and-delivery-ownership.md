@@ -1,7 +1,7 @@
 # ADR-0001: GCP shared platform and delivery ownership
 
 - Date: 2026-11-18
-- Status: Accepted direction; implementation pending. Cluster topology superseded by [ADR-0006](0006-interim-single-cluster-topology.md) (one shared cluster for now)
+- Status: Accepted direction; implementation pending. Cluster topology superseded by [ADR-0006](0006-interim-single-cluster-topology.md) (one shared cluster)
 - Scope: New GCP environments; existing Railway/Vercel deployment unchanged
 - Plan: [IaC/GitOps implementation plan](../iac-gitops-implementation-plan.md)
 
@@ -11,7 +11,7 @@ CloudAnzen needs reproducible staging and production environments with reviewed 
 
 ## Decision
 
-Use separate GCP projects and GKE Autopilot clusters for staging and production as the target topology. Until the second cluster is added, [ADR-0006](0006-interim-single-cluster-topology.md) applies: one shared cluster with staging and production namespaces, and per-environment projects for secrets and data. Deploy shared backend, worker and frontend services within each environment. Customer organizations share these services with application and database tenant isolation; dedicated customer deployments are a separate future offering.
+Cluster topology is decided by [ADR-0006](0006-interim-single-cluster-topology.md): one shared GKE Autopilot cluster with staging and production namespaces, and per-environment GCP projects for secrets and data. Deploy shared backend, worker and frontend services within each environment. Customer organizations share these services with application and database tenant isolation; dedicated customer deployments are a separate future offering.
 
 Assign one ongoing manager to each resource:
 
