@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["environment", "images", "urls", "connectionSecrets", "secretStore", "backend"],
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "httpsUrl": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" },
+    "resources": {
+      "type": "object",
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": { "type": "object", "required": ["cpu", "memory"] },
+        "limits": { "type": "object", "required": ["memory"] }
+      }
+    }
+  },
+  "properties": {
+    "environment": { "type": "string", "enum": ["staging", "production"] },
+    "images": {
+      "type": "object",
+      "required": ["registry", "backend", "backendMigrate", "frontend"],
+      "properties": {
+        "registry": { "type": "string", "minLength": 1 },
+        "backend": { "$ref": "#/definitions/digest" },
+        "backendMigrate": { "$ref": "#/definitions/digest" },
+        "frontend": { "$ref": "#/definitions/digest" }
+      }
+    },
+    "urls": {
+      "type": "object",
+      "required": ["frontend", "platform", "api"],
+      "properties": {
+        "frontend": { "$ref": "#/definitions/httpsUrl" },
+        "platform": { "$ref": "#/definitions/httpsUrl" },
+        "api": { "$ref": "#/definitions/httpsUrl" }
+      }
+    },
+    "connectionSecrets": {
+      "type": "object",
+      "required": ["runtime", "migrate"],
+      "properties": {
+        "runtime": { "type": "string", "minLength": 1 },
+        "migrate": { "type": "string", "minLength": 1 }
+      }
+    },
+    "secretStore": { "type": "string", "minLength": 1 },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "secretEnv": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "additionalProperties": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+        },
+        "env": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "minimum": 1 },
+        "resources": { "$ref": "#/definitions/resources" }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "minimum": 0 },
+        "resources": { "$ref": "#/definitions/resources" }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "minimum": 1 },
+        "sentryDsn": { "type": "string" },
+        "resources": { "$ref": "#/definitions/resources" }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "if": { "properties": { "enabled": { "const": true } } },
+      "then": {
+        "properties": {
+          "parentRef": {
+            "type": "object",
+            "required": ["name", "namespace"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "namespace": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

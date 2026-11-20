@@ -1,0 +1,104 @@
+{{- $sel := dict "root" . "component" "frontend" -}}
+# Static SPA (nginx, non-root, port 8080). The same image serves every
+# environment; /config.js is generated at start from these variables and
+# validated by the image's entrypoint (staging hosts only in staging).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cloudanzen.name" . }}-frontend
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      {{- include "cloudanzen.selector" $sel | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cloudanzen.selector" $sel | nindent 8 }}
+        cloudanzen.io/ingress: "true"
+    spec:
+      serviceAccountName: {{ include "cloudanzen.name" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "cloudanzen.selector" $sel | nindent 14 }}
+      containers:
+        - name: frontend
+          image: {{ include "cloudanzen.image" (dict "root" . "name" "frontend" "digest" .Values.images.frontend) }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: CLOUDANZEN_ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: CLOUDANZEN_API_URL
+              value: {{ .Values.urls.api | quote }}
+            - name: CLOUDANZEN_APP_URL
+              value: {{ .Values.urls.frontend | quote }}
+            {{- with .Values.frontend.sentryDsn }}
+            - name: CLOUDANZEN_SENTRY_DSN
+              value: {{ . | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 20
+          securityContext:
+            {{- include "cloudanzen.containerSecurityContext" . | nindent 12 }}
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            # nginx-unprivileged keeps its pid and temp files in /tmp; the
+            # runtime config is written to /tmp/runtime.
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cloudanzen.name" . }}-frontend
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  selector:
+    {{- include "cloudanzen.selector" $sel | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cloudanzen.name" . }}-frontend
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "cloudanzen.selector" $sel | nindent 6 }}

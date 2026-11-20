@@ -1,0 +1,71 @@
+# Defaults shared by every environment. Each environment's values file
+# (gitops/apps/<env>/app/values.yaml) sets the environment identity, public
+# URLs and image digests; the chart refuses to render without them
+# (values.schema.json).
+
+environment: ""
+
+images:
+  registry: asia-northeast1-docker.pkg.dev/cloudanzen-gke/cloudanzen
+  # Immutable digests (sha256:...). Tags are never used for deployment.
+  backend: ""
+  backendMigrate: ""
+  frontend: ""
+
+urls:
+  frontend: ""
+  platform: ""
+  api: ""
+
+# Secrets prepared by the environment's data application, so they exist
+# before the PreSync migration hook runs.
+connectionSecrets:
+  runtime: cloudanzen-runtime-connections # DATABASE_URL, REDIS_URL (isms_app)
+  migrate: cloudanzen-migrate-connection # DATABASE_URL (migration role)
+
+# Namespaced External Secrets store created by the data application.
+secretStore: gcp-secret-manager
+
+backend:
+  # Environment variable -> Secret Manager secret ID. Add an entry only after
+  # the secret has a version; a missing secret blocks the whole ExternalSecret.
+  secretEnv: {}
+  # Extra non-secret environment variables (merged over the chart's).
+  env: {}
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+worker:
+  replicas: 1
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+frontend:
+  replicas: 2
+  sentryDsn: ""
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 128Mi }
+
+migration:
+  enabled: true
+  activeDeadlineSeconds: 1200
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+priorityClassName: ""
+
+# Public routing through a shared GKE Gateway. Disabled until the Gateway,
+# certificates and DNS exist (owned by the platform layer, not this chart).
+gateway:
+  enabled: false
+  parentRef:
+    name: ""
+    namespace: ""
+    sectionName: ""

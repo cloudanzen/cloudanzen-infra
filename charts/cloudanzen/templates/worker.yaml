@@ -1,0 +1,57 @@
+{{- $sel := dict "root" . "component" "worker" -}}
+# Same image and configuration as the API (one release digest).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cloudanzen.name" . }}-worker
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "cloudanzen.selector" $sel | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cloudanzen.selector" $sel | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/backend-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cloudanzen.name" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      # Lets in-flight BullMQ jobs finish after SIGTERM.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: worker
+          image: {{ include "cloudanzen.image" (dict "root" . "name" "backend" "digest" .Values.images.backend) }}
+          command: ["node", "dist/worker.js"]
+          ports:
+            - name: health
+              containerPort: 8080
+          env:
+            {{- include "cloudanzen.backendPodEnv" . | nindent 12 }}
+            # The worker's health server listens on PORT (src/worker.ts).
+            - name: PORT
+              value: "8080"
+          envFrom:
+            {{- include "cloudanzen.backendEnvFrom" . | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /health, port: health }
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket: { port: health }
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            {{- include "cloudanzen.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

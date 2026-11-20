@@ -1,0 +1,8 @@
+apiVersion: v2
+name: cloudanzen
+description: CloudAnzen API, worker and frontend for the GKE platform
+type: application
+version: 0.1.0
+# The application release is the image digests in the environment values,
+# not this field.
+appVersion: "digest-pinned"

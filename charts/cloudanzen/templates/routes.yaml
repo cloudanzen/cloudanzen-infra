@@ -1,0 +1,84 @@
+{{- if .Values.gateway.enabled }}
+{{- $name := include "cloudanzen.name" . -}}
+{{- $parent := .Values.gateway.parentRef -}}
+# Routes attach to the shared Gateway owned by the platform layer (TLS,
+# certificates and DNS live there, ADR-0004). Browser traffic for the app and
+# platform hosts goes to the frontend; the API has its own host.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}-api
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ $parent.name }}
+      namespace: {{ $parent.namespace }}
+      {{- with $parent.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+  hostnames:
+    - {{ include "cloudanzen.host" .Values.urls.api | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ $name }}-api
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}-frontend
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ $parent.name }}
+      namespace: {{ $parent.namespace }}
+      {{- with $parent.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+  hostnames:
+    - {{ include "cloudanzen.host" .Values.urls.frontend | quote }}
+    - {{ include "cloudanzen.host" .Values.urls.platform | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ $name }}-frontend
+          port: 80
+---
+# GKE load-balancer health checks default to "/" on the serving port.
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ $name }}-api
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        requestPath: /health
+        port: 3000
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ $name }}-api
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ $name }}-frontend
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        requestPath: /healthz
+        port: 8080
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ $name }}-frontend
+{{- end }}

@@ -8,12 +8,14 @@ on:
     paths:
       - 'terraform/**'
       - 'gitops/**'
+      - 'charts/**'
       - '.github/workflows/gcp-terraform.yml'
   push:
     branches: [main]
     paths:
       - 'terraform/**'
       - 'gitops/**'
+      - 'charts/**'
       - '.github/workflows/gcp-terraform.yml'
 
 permissions:
@@ -57,6 +59,8 @@ jobs:
           import glob, sys, yaml
           bad = 0
           for f in sorted(glob.glob('gitops/**/*.yaml', recursive=True)):
+              if f.endswith('/values.yaml'):
+                  continue  # Helm values, checked by the chart job
               try:
                   docs = [d for d in yaml.safe_load_all(open(f)) if d]
                   for d in docs:
@@ -67,6 +71,42 @@ jobs:
                   print(f"BAD {f}: {e}")
           sys.exit(1 if bad else 0)
           PY
+
+  chart:
+    name: Application chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint and render with each environment's values
+        run: |
+          set -euo pipefail
+          helm version --short
+          for values in gitops/apps/*/app/values.yaml; do
+            env_name=$(basename "$(dirname "$(dirname "$values")")")
+            echo "== $env_name"
+            helm lint charts/cloudanzen -f "$values"
+            helm template cloudanzen charts/cloudanzen -n "cloudanzen-$env_name" -f "$values" > "/tmp/rendered-$env_name.yaml"
+          done
+
+      - name: Argo CD hooks only (no Helm hooks)
+        run: |
+          set -euo pipefail
+          # Argo ignores every Helm hook once an Application has any Argo hook,
+          # which would make migration ordering ambiguous (plan, section 5).
+          if grep -n 'helm.sh/hook' /tmp/rendered-*.yaml charts/cloudanzen/templates/*; then
+            echo "::error::Use argocd.argoproj.io/hook annotations, not helm.sh/hook."
+            exit 1
+          fi
+
+      - name: Images pinned by digest
+        run: |
+          set -euo pipefail
+          if grep -nE '^\s+image: ' /tmp/rendered-*.yaml | grep -v '@sha256:'; then
+            echo "::error::Every image must be pinned by digest."
+            exit 1
+          fi
 
   validate:
     name: Validate (${{ matrix.root }})

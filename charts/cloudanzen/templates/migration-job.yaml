@@ -1,0 +1,48 @@
+{{- if .Values.migration.enabled }}
+# One serialized `prisma migrate deploy` per sync, before any workload changes.
+# Argo hooks only: if an Application has any Argo hook, Helm hooks are ignored,
+# so this chart must never use Helm hook annotations (CI rejects them).
+# Repeated syncs are safe: migrate deploy applies only pending migrations.
+# The migration connection secret is used only here, never by runtime pods.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cloudanzen.name" . }}-migrate
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "cloudanzen.selector" (dict "root" . "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "cloudanzen.name" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: migrate
+          image: {{ include "cloudanzen.image" (dict "root" . "name" "backend-migrate" "digest" .Values.images.backendMigrate) }}
+          env:
+            - name: CHECKPOINT_DISABLE
+              value: "1"
+          envFrom:
+            - secretRef:
+                name: {{ .Values.connectionSecrets.migrate }}
+          securityContext:
+            {{- include "cloudanzen.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+{{- end }}
