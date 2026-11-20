@@ -54,5 +54,7 @@ spec:
             failureThreshold: 3
           securityContext:
             {{- include "cloudanzen.containerSecurityContext" . | nindent 12 }}
+          {{- include "cloudanzen.dbCaVolumeMounts" . | trim | nindent 10 }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
+      {{- include "cloudanzen.dbCaVolumes" . | trim | nindent 6 }}

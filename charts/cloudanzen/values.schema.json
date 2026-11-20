@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["environment", "images", "urls", "connectionSecrets", "secretStore", "backend"],
+  "required": ["environment", "images", "urls", "connectionSecrets", "secretStore", "database", "backend"],
   "definitions": {
     "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
     "httpsUrl": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" },
@@ -44,6 +44,14 @@
       }
     },
     "secretStore": { "type": "string", "minLength": 1 },
+    "database": {
+      "type": "object",
+      "required": ["tls"],
+      "properties": {
+        "tls": { "type": "string", "enum": ["verify-full", "disable"] },
+        "caSecret": { "type": "string" }
+      }
+    },
     "backend": {
       "type": "object",
       "properties": {
