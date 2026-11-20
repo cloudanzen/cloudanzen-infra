@@ -94,3 +94,12 @@ resource "google_storage_bucket_iam_member" "db_backup_objects" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.db_backup.email}"
 }
+
+# Barman Cloud checks the destination with storage.buckets.get before
+# archiving WAL; objectAdmin does not include it. legacyBucketReader adds
+# only buckets.get and objects.list on this bucket.
+resource "google_storage_bucket_iam_member" "db_backup_bucket_read" {
+  bucket = google_storage_bucket.db_backups.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.db_backup.email}"
+}
