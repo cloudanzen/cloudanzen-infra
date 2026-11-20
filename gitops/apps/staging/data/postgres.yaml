@@ -1,6 +1,8 @@
-# PostgreSQL 18 via CloudNativePG: 3 instances, pgvector from the CNPG
-# extension image, roles the migrations expect, and continuous backup to
-# the staging backup bucket through the Barman Cloud plugin.
+# PostgreSQL 18 via CloudNativePG: 3 instances, roles the migrations expect,
+# and continuous backup to the staging backup bucket through the Barman
+# Cloud plugin. pgvector comes from the CNPG "standard" image: GKE Autopilot
+# rejects the `image` volume type that CNPG extension images
+# (spec.postgresql.extensions) need.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:
@@ -30,14 +32,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-minimal-trixie
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-standard-trixie
   priorityClassName: cloudanzen-staging
 
   postgresql:
-    extensions:
-      - name: pgvector
-        image:
-          reference: ghcr.io/cloudnative-pg/pgvector:0.8.7-18-trixie
     parameters:
       max_connections: "100"
       shared_buffers: 128MB
