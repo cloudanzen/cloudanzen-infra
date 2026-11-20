@@ -23,6 +23,12 @@ connectionSecrets:
   runtime: cloudanzen-runtime-connections # DATABASE_URL, REDIS_URL (isms_app)
   migrate: cloudanzen-migrate-connection # DATABASE_URL (migration role)
 
+# Database TLS (backend src/lib/db/tls.ts). verify-full checks the chain and
+# the hostname against the CloudNativePG CA; only ca.crt is mounted.
+database:
+  tls: verify-full
+  caSecret: cloudanzen-db-ca
+
 # Namespaced External Secrets store created by the data application.
 secretStore: gcp-secret-manager
 

@@ -61,4 +61,33 @@ capabilities:
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: DATABASE_TLS
+  value: {{ .Values.database.tls | quote }}
+{{- if eq .Values.database.tls "verify-full" }}
+- name: DATABASE_CA_CERT_PATH
+  value: /etc/cloudanzen/db-ca/ca.crt
+{{- end }}
+{{- end -}}
+
+{{/* Database CA volume and mount. Only the public CA certificate is
+projected; the CA key in the same Secret is not mounted. */}}
+{{- define "cloudanzen.dbCaVolumeMounts" -}}
+{{- if eq .Values.database.tls "verify-full" }}
+volumeMounts:
+  - name: db-ca
+    mountPath: /etc/cloudanzen/db-ca
+    readOnly: true
+{{- end }}
+{{- end -}}
+
+{{- define "cloudanzen.dbCaVolumes" -}}
+{{- if eq .Values.database.tls "verify-full" }}
+volumes:
+  - name: db-ca
+    secret:
+      secretName: {{ required "database.caSecret is required for verify-full" .Values.database.caSecret }}
+      items:
+        - key: ca.crt
+          path: ca.crt
+{{- end }}
 {{- end -}}

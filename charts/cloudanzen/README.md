@@ -21,6 +21,7 @@ CloudAnzen API, worker and frontend for the GKE platform. One release per enviro
 - **Connection strings come from the data application** (`cloudanzen-runtime-connections`, `cloudanzen-migrate-connection`), so they exist before the PreSync hook. Runtime pods never receive the migration credential.
 - **No secret values** in values files, Git or Argo: only secret IDs (ADR-0003). Add a `secretEnv` entry only after the secret has a version, because one missing secret blocks the whole ExternalSecret.
 - **Secret rotation** updates the Kubernetes Secret within `refreshInterval` (1h), but running pods keep the old value until they restart. Restart the Deployments after a rotation.
+- **Database TLS** is `verify-full` against the CloudNativePG CA (`database.caSecret`, only `ca.crt` mounted); the backend refuses to start in production mode without an explicit `DATABASE_TLS`.
 - The backend's deployment guard (`APP_ENV`) and the frontend entrypoint both refuse non-staging hosts in staging, and staging hosts in production.
 
 ## Local checks
@@ -35,4 +36,4 @@ helm template cloudanzen charts/cloudanzen -n cloudanzen-staging -f gitops/apps/
 - Evidence uploads use local disk (`UPLOAD_DIR`) unless `EVIDENCE_*` object storage is configured, so files do not survive pod restarts and are not shared between pods.
 - No autoscaling yet; size replicas and requests from measured staging use.
 - Root filesystem is writable for the API and worker (Chromium PDF rendering and uploads); hardening is a follow-up.
-- Database connections are not TLS-verified inside the cluster (traffic stays in the namespace, restricted by NetworkPolicy).
+- The migration Job connects with Prisma's default TLS (`prefer`, unverified); the API and worker use `verify-full`.
