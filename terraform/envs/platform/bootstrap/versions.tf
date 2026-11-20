@@ -23,8 +23,11 @@ provider "google" {
 }
 
 # The run's short-lived GCP identity (HCP dynamic credentials) authenticates
-# to the cluster; no kubeconfig or static token exists.
-data "google_client_config" "current" {}
+# to the cluster; no kubeconfig or static token exists. The token must be
+# ephemeral: a data source would be read at plan time and saved in the plan,
+# so the apply phase would reuse the read-only plan identity's token.
+# Ephemeral values are fetched per phase and never stored in plan or state.
+ephemeral "google_client_config" "current" {}
 
 data "google_container_cluster" "this" {
   name     = var.cluster_name
@@ -39,14 +42,14 @@ locals {
 
 provider "kubernetes" {
   host                   = local.cluster_host
-  token                  = data.google_client_config.current.access_token
+  token                  = ephemeral.google_client_config.current.access_token
   cluster_ca_certificate = local.cluster_ca
 }
 
 provider "helm" {
   kubernetes = {
     host                   = local.cluster_host
-    token                  = data.google_client_config.current.access_token
+    token                  = ephemeral.google_client_config.current.access_token
     cluster_ca_certificate = local.cluster_ca
   }
 }
