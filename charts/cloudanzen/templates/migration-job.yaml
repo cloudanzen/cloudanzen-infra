@@ -32,8 +32,7 @@ spec:
       {{- end }}
       securityContext:
         {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
-        runAsUser: 1000
-        runAsGroup: 1000
+        {{- include "cloudanzen.backendUser" . | nindent 8 }}
       containers:
         - name: migrate
           image: {{ include "cloudanzen.image" (dict "root" . "name" "backend-migrate" "digest" .Values.images.backendMigrate) }}
