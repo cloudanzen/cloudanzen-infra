@@ -1,0 +1,92 @@
+# Valkey (BSD-licensed Redis fork) for BullMQ queues. Single replica with
+# persistent AOF; noeviction so queued jobs are never silently dropped.
+# Losing the volume loses queued/delayed jobs only (see plan section 5).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  valkey.conf: |
+    appendonly yes
+    appendfsync everysec
+    maxmemory 384mb
+    maxmemory-policy noeviction
+    dir /data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector: { app.kubernetes.io/name: redis }
+  ports:
+    - { name: redis, port: 6379, targetPort: 6379 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: redis }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: redis }
+    spec:
+      priorityClassName: cloudanzen-staging
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: valkey
+          image: valkey/valkey:8.1.9-alpine
+          command: ["sh", "-c"]
+          # The password comes from Secret Manager via the `redis` Secret.
+          args: ['exec valkey-server /etc/valkey/valkey.conf --requirepass "$REDIS_PASSWORD"']
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: redis, key: password }
+          ports:
+            - { name: redis, containerPort: 6379 }
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'REDISCLI_AUTH="$REDIS_PASSWORD" valkey-cli ping | grep -q PONG']
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: config, mountPath: /etc/valkey }
+      volumes:
+        - name: config
+          configMap: { name: redis-config }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi

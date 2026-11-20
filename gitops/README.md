@@ -7,6 +7,7 @@ Argo CD reconciles this directory continuously (automated sync with prune and se
 | `bootstrap/` | root Application (project `default`) | AppProjects and the Applications below, ordered by sync wave |
 | `platform/baseline/` | `platform-baseline` (project `platform`) | Environment namespaces, quotas, limit ranges, priority classes, default-deny network policies |
 | operators | Applications in `bootstrap/` (project `platform`) | cert-manager, External Secrets Operator, CloudNativePG operator, Barman Cloud plugin |
+| `apps/staging/data/` | `staging-data` (project `cloudanzen-staging`) | Secret Manager wiring (SecretStore, ExternalSecrets), PostgreSQL 18 + pgvector (CloudNativePG, 3 instances, backups to GCS), Valkey |
 
 Projects (ADR-0006): `platform` may install cluster-wide operators. `cloudanzen-staging` and `cloudanzen-prod` may deploy only into their own namespace, may not create cluster-scoped resources, and may not change quotas, limit ranges or network policies set by the baseline.
 

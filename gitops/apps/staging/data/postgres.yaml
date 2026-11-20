@@ -1,0 +1,113 @@
+# PostgreSQL 18 via CloudNativePG: 3 instances, pgvector from the CNPG
+# extension image, roles the migrations expect, and continuous backup to
+# the staging backup bucket through the Barman Cloud plugin.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: cloudanzen-db-backups
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  retentionPolicy: "14d"
+  configuration:
+    destinationPath: gs://cloudanzen-staging-db-backups/
+    googleCredentials:
+      # GKE Workload Identity: the instance pods' service account maps to
+      # db-backup-staging@ (see serviceAccountTemplate below).
+      gkeEnvironment: true
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cloudanzen-db
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-minimal-trixie
+  priorityClassName: cloudanzen-staging
+
+  postgresql:
+    extensions:
+      - name: pgvector
+        image:
+          reference: ghcr.io/cloudnative-pg/pgvector:0.8.7-18-trixie
+    parameters:
+      max_connections: "100"
+      shared_buffers: 128MB
+
+  bootstrap:
+    initdb:
+      database: cloudanzen
+      owner: cloudanzen_owner
+
+  # Superuser for the migration Job only (M1, as on the legacy stack).
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: cloudanzen-db-superuser
+
+  # Roles the migrations create idempotently (IF NOT EXISTS), declared here
+  # so membership is set without superuser grants at runtime. Attributes
+  # match migration 20260522014411 (isms_app NOSUPERUSER NOBYPASSRLS
+  # NOINHERIT).
+  managed:
+    roles:
+      - name: isms_app_rls
+        ensure: present
+        login: false
+        bypassrls: false
+      - name: isms_admin_bypass
+        ensure: present
+        login: false
+        bypassrls: true
+      - name: isms_app
+        ensure: present
+        login: true
+        superuser: false
+        bypassrls: false
+        inherit: false
+        inRoles: [isms_app_rls, isms_admin_bypass]
+        passwordSecret:
+          name: cloudanzen-db-isms-app
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        iam.gke.io/gcp-service-account: db-backup-staging@cloudanzen-staging.iam.gserviceaccount.com
+
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: cloudanzen-db-backups
+---
+# Daily base backup at 03:00 JST (18:00 UTC); WAL is archived continuously.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: cloudanzen-db-daily
+  namespace: cloudanzen-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  schedule: "0 0 18 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: cloudanzen-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
