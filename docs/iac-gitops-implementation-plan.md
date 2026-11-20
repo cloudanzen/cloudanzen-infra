@@ -399,7 +399,7 @@ At about 7 engineer-days per week, the expected M1 staging total is about 9 week
 | Cluster topology | **Decided:** one shared cluster for staging and production (ADR-0006); no second cluster planned | — |
 | Terraform state backend | Keep HCP Terraform Free while under 500 managed resources; documented GCS backend as the alternative | PR4 |
 | Region | One region close to initial customers and data-residency needs, for example `europe-west1` or `us-central1`; confirm with the account owner | PR4 |
-| PostgreSQL and pgvector | PostgreSQL 18 with the CNPG pgvector extension image if the spike confirms Autopilot support; otherwise an image with pgvector built in | PR7 |
+| PostgreSQL and pgvector | Decided (2026-11-20): CNPG `standard` PostgreSQL 18 image, which includes pgvector. Autopilot rejects the `image` volumes that CNPG extension images need | PR7 |
 | Recovery targets | Production RPO 15 minutes and RTO 4 hours, measured by the restore drill before customers | PR10 |
 | Cloudflare edge mode | DNS-only in M1 | PR4 |
 | Session mechanism under tenant hosts | Host-only CloudAnzen server session after verified login (current authentication in M1) | PR2 |
