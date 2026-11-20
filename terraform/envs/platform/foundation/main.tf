@@ -72,3 +72,30 @@ resource "google_artifact_registry_repository_iam_member" "image_publisher" {
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${module.github_wif.service_account_emails["ci-image-publisher"]}"
 }
+
+# Autopilot nodes run as the Compute Engine default service account (the
+# cluster's node identity cannot be changed after creation). This
+# organization does not grant that account any roles automatically, so give
+# it only what nodes need: pulling images from this repository, and the GKE
+# node role for logging, monitoring and metadata.
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
+locals {
+  node_service_account = "serviceAccount:${data.google_project.this.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_artifact_registry_repository_iam_member" "node_image_pull" {
+  project    = var.project_id
+  location   = var.region
+  repository = module.registry.repository_id
+  role       = "roles/artifactregistry.reader"
+  member     = local.node_service_account
+}
+
+resource "google_project_iam_member" "node_default_role" {
+  project = var.project_id
+  role    = "roles/container.defaultNodeServiceAccount"
+  member  = local.node_service_account
+}
