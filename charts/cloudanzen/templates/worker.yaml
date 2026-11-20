@@ -29,6 +29,7 @@ spec:
       terminationGracePeriodSeconds: 60
       securityContext:
         {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+        {{- include "cloudanzen.backendUser" . | nindent 8 }}
       containers:
         - name: worker
           image: {{ include "cloudanzen.image" (dict "root" . "name" "backend" "digest" .Values.images.backend) }}

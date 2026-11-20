@@ -31,6 +31,13 @@ seccompProfile:
   type: RuntimeDefault
 {{- end -}}
 
+{{/* The backend image declares USER isms by name; runAsNonRoot needs the
+numeric IDs (isms is uid 1001, group nodejs gid 1001 in the Dockerfile). */}}
+{{- define "cloudanzen.backendUser" -}}
+runAsUser: 1001
+runAsGroup: 1001
+{{- end -}}
+
 {{- define "cloudanzen.containerSecurityContext" -}}
 allowPrivilegeEscalation: false
 capabilities:

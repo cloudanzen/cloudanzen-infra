@@ -31,6 +31,7 @@ spec:
       terminationGracePeriodSeconds: 30
       securityContext:
         {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+        {{- include "cloudanzen.backendUser" . | nindent 8 }}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
