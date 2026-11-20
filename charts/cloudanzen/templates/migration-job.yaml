@@ -23,7 +23,9 @@ spec:
         {{- include "cloudanzen.selector" (dict "root" . "component" "migrate") | nindent 8 }}
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "cloudanzen.name" . }}
+      # PreSync runs before the chart's own resources (including its
+      # ServiceAccount) exist, so use the namespace default. No token mounted.
+      serviceAccountName: default
       automountServiceAccountToken: false
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ . }}
