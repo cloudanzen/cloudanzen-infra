@@ -1,0 +1,27 @@
+# Staging application (charts/cloudanzen) with the staging values. Synced
+# after staging-data, whose connection secrets the PreSync migration needs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging-app
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: cloudanzen-staging
+  source:
+    repoURL: https://github.com/cloudanzen/cloudanzen-infra.git
+    targetRevision: main
+    path: charts/cloudanzen
+    helm:
+      releaseName: cloudanzen
+      valueFiles:
+        - ../../gitops/apps/staging/app/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudanzen-staging
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    retry:
+      limit: 5
+      backoff: { duration: 1m, factor: 2, maxDuration: 10m }

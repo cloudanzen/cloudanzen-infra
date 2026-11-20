@@ -1,0 +1,42 @@
+# Staging release of charts/cloudanzen. A release is a reviewed change to the
+# image digests below (built once per commit by each repository's image
+# workflow); production later promotes the same digests.
+environment: staging
+
+images:
+  # Cloudanzen-backend 3e43232 (backend and backend-migrate targets)
+  backend: sha256:a41a421ba6ceb1d5688b84115343f11b7d9f19ac14df1ac72f62ccbd4180127b
+  backendMigrate: sha256:dc91a78d146e78ecd2276d85582f1b21d3ad47fbf68d75429ff6830d35cf0a6d
+  # Cloudanzen-frontend 3516a6c
+  frontend: sha256:24efa275ac6b9bfcff6c28641291e8f951af2ba8882a1726e056879fb1bf62d3
+
+# Staging mirrors the production hosts with a `staging` label (the backend
+# and frontend refuse non-staging hosts when the environment is staging).
+# Tenant hosts (<tenant>.staging.app.cloudanzen.com) come with M2.
+urls:
+  frontend: https://app.staging.cloudanzen.com
+  platform: https://platform.staging.cloudanzen.com
+  api: https://api.staging.cloudanzen.com
+
+# Environment variable -> secret ID in Secret Manager (cloudanzen-staging).
+# Only secrets that have a version. Provider credentials (Google, GitHub,
+# Resend, OpenAI, Anthropic) are added once their staging apps exist.
+backend:
+  secretEnv:
+    JWT_SECRET: jwt-secret
+    ENCRYPTION_KEY: encryption-key
+    TURNSTILE_SECRET: turnstile-secret
+    PUBLIC_ACADEMY_ATTEMPT_HMAC_SECRET: public-academy-attempt-hmac-secret
+    PUBLIC_ACADEMY_COMPLETION_HMAC_SECRET: public-academy-completion-hmac-secret
+    PUBLIC_ACADEMY_MANAGE_HMAC_SECRET: public-academy-manage-hmac-secret
+    TRUST_GRANT_HASH_SECRET: trust-grant-hash-secret
+    TRUST_VIEWER_HASH_SECRET: trust-viewer-hash-secret
+    TRUST_SHARE_LINK_HMAC_SECRET: trust-share-link-hmac-secret
+    TRUST_SUBSCRIBER_HMAC_SECRET: trust-subscriber-hmac-secret
+    TRUST_VIEWER_ERASURE_HMAC_SECRET: trust-viewer-erasure-hmac-secret
+
+priorityClassName: cloudanzen-staging
+
+# Enabled once the shared Gateway, staging certificates and DNS exist.
+gateway:
+  enabled: false

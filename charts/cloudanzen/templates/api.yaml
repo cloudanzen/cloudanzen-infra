@@ -1,0 +1,100 @@
+{{- $sel := dict "root" . "component" "api" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cloudanzen.name" . }}-api
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      {{- include "cloudanzen.selector" $sel | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cloudanzen.selector" $sel | nindent 8 }}
+        cloudanzen.io/ingress: "true"
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/backend-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cloudanzen.name" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "cloudanzen.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "cloudanzen.selector" $sel | nindent 14 }}
+      containers:
+        - name: api
+          image: {{ include "cloudanzen.image" (dict "root" . "name" "backend" "digest" .Values.images.backend) }}
+          command: ["node", "dist/server.js"]
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            {{- include "cloudanzen.backendPodEnv" . | nindent 12 }}
+          envFrom:
+            {{- include "cloudanzen.backendEnvFrom" . | nindent 12 }}
+          # The server checks the schema before listening, so startup allows
+          # up to five minutes.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          # /health returns 503 when the database is unreachable: take the pod
+          # out of rotation, but do not restart it (a database failover would
+          # otherwise restart every API pod).
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            {{- include "cloudanzen.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cloudanzen.name" . }}-api
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    {{- include "cloudanzen.selector" $sel | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cloudanzen.name" . }}-api
+  labels:
+    {{- include "cloudanzen.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "cloudanzen.selector" $sel | nindent 6 }}
