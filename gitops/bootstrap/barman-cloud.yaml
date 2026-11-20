@@ -1,0 +1,29 @@
+# Barman Cloud plugin for CloudNativePG backups (needs cert-manager and the
+# CNPG operator, hence the later wave).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: barman-cloud
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: platform
+  source:
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: plugin-barman-cloud
+    targetRevision: 0.9.0
+    helm:
+      valuesObject:
+        resources:
+          requests: { cpu: 50m, memory: 128Mi }
+          limits: { memory: 256Mi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+    retry:
+      limit: 10
+      backoff: { duration: 30s, factor: 2, maxDuration: 10m }

@@ -1,0 +1,140 @@
+# Baseline for the cloudanzen-prod namespace (ADR-0006). Workload
+# Applications in the cloudanzen-prod project cannot change these objects.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudanzen-prod
+  labels:
+    cloudanzen.io/environment: prod
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cloudanzen-prod
+  namespace: cloudanzen-prod
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.memory: 24Gi
+    persistentvolumeclaims: "20"
+    requests.storage: 500Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: cloudanzen-prod
+spec:
+  limits:
+    - type: Container
+      defaultRequest: { cpu: 100m, memory: 128Mi }
+      default: { memory: 512Mi }
+---
+# Default deny; the policies below open only what is needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: cloudanzen-prod
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: cloudanzen-prod
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: {} }]
+  egress:
+    - to: [{ podSelector: {} }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: cloudanzen-prod
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# GKE metadata server (Workload Identity) and the control plane's private
+# endpoint (10.10.0.2 in the node range; see Terraform platform state).
+# Update the address if the cluster is ever recreated.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gke-platform
+  namespace: cloudanzen-prod
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ ipBlock: { cidr: 169.254.169.254/32 } }]
+      ports: [{ protocol: TCP, port: 80 }]
+    - to: [{ ipBlock: { cidr: 169.254.169.252/32 } }]
+      ports: [{ protocol: TCP, port: 988 }]
+    - to: [{ ipBlock: { cidr: 10.10.0.2/32 } }]
+      ports: [{ protocol: TCP, port: 443 }]
+---
+# Internet egress (provider APIs, Google APIs, backups) but no private
+# ranges, so pods cannot reach the other environment's namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internet-egress
+  namespace: cloudanzen-prod
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+---
+# CloudNativePG operator to database instances (status and replication).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  namespace: cloudanzen-prod
+spec:
+  podSelector:
+    matchLabels: { cnpg.io/podRole: instance }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: cnpg-system }
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+---
+# Google load balancer proxies and health checks to pods that opt in with
+# the cloudanzen.io/ingress label (used by the Gateway in the app chart).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-google-load-balancer
+  namespace: cloudanzen-prod
+spec:
+  podSelector:
+    matchLabels: { cloudanzen.io/ingress: "true" }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 35.191.0.0/16 }
+        - ipBlock: { cidr: 130.211.0.0/22 }
