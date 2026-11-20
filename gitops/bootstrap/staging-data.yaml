@@ -1,0 +1,25 @@
+# Staging data layer (PostgreSQL via CloudNativePG, Valkey, secrets). Runs
+# under the cloudanzen-staging project: staging namespace only, no
+# cluster-scoped resources.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging-data
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: cloudanzen-staging
+  source:
+    repoURL: https://github.com/cloudanzen/cloudanzen-infra.git
+    targetRevision: main
+    path: gitops/apps/staging/data
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudanzen-staging
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+    retry:
+      limit: 10
+      backoff: { duration: 30s, factor: 2, maxDuration: 10m }

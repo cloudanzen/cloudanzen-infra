@@ -27,6 +27,7 @@ locals {
     "trust-viewer-erasure-hmac-secret",
     "db-app-password",
     "db-migrate-password",
+    "redis-password",
   ]
 }
 
