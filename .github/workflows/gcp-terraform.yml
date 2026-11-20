@@ -7,11 +7,13 @@ on:
   pull_request:
     paths:
       - 'terraform/**'
+      - 'gitops/**'
       - '.github/workflows/gcp-terraform.yml'
   push:
     branches: [main]
     paths:
       - 'terraform/**'
+      - 'gitops/**'
       - '.github/workflows/gcp-terraform.yml'
 
 permissions:
@@ -42,6 +44,30 @@ jobs:
             exit 1
           fi
 
+  gitops:
+    name: GitOps manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse every manifest
+        run: |
+          python3 - <<'PY'
+          import glob, sys, yaml
+          bad = 0
+          for f in sorted(glob.glob('gitops/**/*.yaml', recursive=True)):
+              try:
+                  docs = [d for d in yaml.safe_load_all(open(f)) if d]
+                  for d in docs:
+                      assert d.get('apiVersion') and d.get('kind') and d.get('metadata', {}).get('name'), 'missing apiVersion/kind/name'
+                  print(f"ok  {f}: {len(docs)} document(s)")
+              except Exception as e:
+                  bad += 1
+                  print(f"BAD {f}: {e}")
+          sys.exit(1 if bad else 0)
+          PY
+
   validate:
     name: Validate (${{ matrix.root }})
     runs-on: ubuntu-latest
@@ -51,6 +77,7 @@ jobs:
         root:
           - terraform/envs/org/projects
           - terraform/envs/platform/foundation
+          - terraform/envs/platform/bootstrap
           - terraform/envs/staging/foundation
           - terraform/envs/prod/foundation
     defaults:

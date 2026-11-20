@@ -1,0 +1,75 @@
+# AppProjects (ADR-0001, ADR-0006). Synced first.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Cluster-wide operators and the environment baseline
+  sourceRepos:
+    - https://github.com/cloudanzen/cloudanzen-infra.git
+    - https://charts.jetstack.io
+    - https://charts.external-secrets.io
+    - https://cloudnative-pg.github.io/charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cert-manager
+    - server: https://kubernetes.default.svc
+      namespace: external-secrets
+    - server: https://kubernetes.default.svc
+      namespace: cnpg-system
+    - server: https://kubernetes.default.svc
+      namespace: cloudanzen-staging
+    - server: https://kubernetes.default.svc
+      namespace: cloudanzen-prod
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cloudanzen-staging
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Staging workloads; staging namespace only
+  sourceRepos:
+    - https://github.com/cloudanzen/cloudanzen-infra.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cloudanzen-staging
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cloudanzen-prod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Production workloads; production namespace only
+  sourceRepos:
+    - https://github.com/cloudanzen/cloudanzen-infra.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cloudanzen-prod
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+    - group: networking.k8s.io
+      kind: NetworkPolicy

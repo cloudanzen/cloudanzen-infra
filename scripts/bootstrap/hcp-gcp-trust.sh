@@ -18,7 +18,7 @@ set -euo pipefail
 : "${BILLING_ACCOUNT:?Set BILLING_ACCOUNT to the billing account ID}"
 PROJECT_ID="${PROJECT_ID:-cloudanzen-gke}"
 HCP_ORG="${HCP_ORG:-cloudanzen}"
-WORKSPACES="${WORKSPACES:-gcp-org-projects gcp-platform-foundation gcp-staging-foundation gcp-prod-foundation}"
+WORKSPACES="${WORKSPACES:-gcp-org-projects gcp-platform-foundation gcp-platform-bootstrap gcp-staging-foundation gcp-prod-foundation}"
 # Environment projects that already exist (for example created in the
 # console). Projects created by Terraform make the apply identity owner
 # automatically; pre-existing ones need the grant below.

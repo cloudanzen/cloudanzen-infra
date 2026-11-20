@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-baseline
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/cloudanzen/cloudanzen-infra.git
+    targetRevision: main
+    path: gitops/platform/baseline
+  destination:
+    server: https://kubernetes.default.svc
+    # Every object here sets its own namespace (or is cluster-scoped); this
+    # value only satisfies the project's destination check.
+    namespace: cloudanzen-staging
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
