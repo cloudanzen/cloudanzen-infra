@@ -46,3 +46,9 @@ gateway:
     name: cloudanzen
     namespace: gateway
     sectionName: https-staging
+  # Google Front End ranges and the Gateway address (Terraform output
+  # gateway_address of the platform foundation).
+  trustedProxies:
+    - 35.191.0.0/16
+    - 130.211.0.0/22
+    - 34.111.0.4/32

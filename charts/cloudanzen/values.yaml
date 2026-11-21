@@ -75,3 +75,8 @@ gateway:
     name: ""
     namespace: ""
     sectionName: ""
+  # Proxy addresses the backend trusts for the client IP (TRUST_PROXY_CIDRS).
+  # GKE global external Application Load Balancer: the Google Front End
+  # ranges plus the Gateway's own address, which the load balancer appends to
+  # X-Forwarded-For after the client's. Required when enabled.
+  trustedProxies: []
