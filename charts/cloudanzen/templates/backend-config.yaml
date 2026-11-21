@@ -17,6 +17,12 @@
   "INTERCOM_REDIRECT_URI" (printf "%s/api/integrations/intercom/callback" $api)
   "SALESFORCE_REDIRECT_URI" (printf "%s/api/integrations/salesforce/callback" $api)
 -}}
+{{- /* Behind the Gateway the backend must know which peers are proxies, or
+     every client shares the load balancer's address (backend
+     src/config/trust-proxy.ts; required by its deployment guard). */ -}}
+{{- if .Values.gateway.enabled }}
+{{- $_ := set $chartEnv "TRUST_PROXY_CIDRS" (join "," .Values.gateway.trustedProxies) }}
+{{- end }}
 {{- $env := merge (deepCopy .Values.backend.env) $chartEnv -}}
 # Non-secret backend configuration. Every public URL and OAuth callback is set
 # explicitly from the environment's hosts, so no production default from the

@@ -13,6 +13,7 @@ CloudAnzen API, worker and frontend for the GKE platform. One release per enviro
 | `cloudanzen-backend-env` ConfigMap | `NODE_ENV=production`, `APP_ENV`, and every public URL and OAuth callback derived from `urls.*`, so no production default from the backend schema applies |
 | `cloudanzen-backend-secrets` ExternalSecret | `backend.secretEnv`: environment variable to Secret Manager secret ID |
 | HTTPRoutes and HealthCheckPolicies | Only with `gateway.enabled`; attach to the shared Gateway owned by the platform layer |
+| `TRUST_PROXY_CIDRS` | Only with `gateway.enabled`, from `gateway.trustedProxies` (required then): the Google Front End ranges plus the Gateway address, so the backend sees client IPs instead of the load balancer's |
 
 ## Contracts
 
