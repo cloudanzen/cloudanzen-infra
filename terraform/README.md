@@ -7,11 +7,11 @@ New GCP roots for the platform described in [the implementation plan](../docs/ia
 | Path | Purpose | ADR |
 | --- | --- | --- |
 | `envs/org/projects` | Creates the staging and production projects under the organization and links billing; grants the plan identity read access | 0006 |
-| `envs/platform/foundation` | Shared cluster project: APIs, VPC, Cloud NAT with reserved static egress IPs, one GKE Autopilot cluster, Artifact Registry, keyless GitHub Actions federation for image publishing | 0001, 0006 |
+| `envs/platform/foundation` | Shared cluster project: APIs, VPC, Cloud NAT with reserved static egress IPs, one GKE Autopilot cluster, Artifact Registry, keyless GitHub Actions federation for image publishing, and the shared Gateway's static address, certificate map and TLS policy | 0001, 0004, 0006 |
 | `envs/platform/bootstrap` | Installs Argo CD (Helm) and the root Application that reconciles `gitops/`; grants the plan identity read access to Helm release records | 0001 |
-| `envs/staging/foundation` | Staging project: Secret Manager containers, database backup bucket, service accounts for the `cloudanzen-staging` namespace | 0003, 0006 |
+| `envs/staging/foundation` | Staging project: Secret Manager containers, database backup bucket, service accounts for the `cloudanzen-staging` namespace; staging's certificate and certificate map entry (in the cluster project) and its Cloudflare DNS records | 0003, 0004, 0006 |
 | `envs/prod/foundation` | Production project: the same for the `cloudanzen-prod` namespace | 0003, 0006 |
-| `modules/*` | `project-services`, `network`, `gke-autopilot`, `artifact-registry`, `github-wif`, `env-project` | — |
+| `modules/*` | `project-services`, `network`, `gke-autopilot`, `artifact-registry`, `github-wif`, `env-project`, `env-edge` | — |
 
 ## Rules
 
@@ -43,10 +43,13 @@ Inputs: GCP organization and billing account (HCP workspace variables only, neve
    | `gcp-staging-foundation` | `project_id = cloudanzen-staging`, `cluster_project_id = cloudanzen-gke`, `region = asia-northeast1` |
    | `gcp-prod-foundation` | `project_id = cloudanzen-prod`, `cluster_project_id = cloudanzen-gke`, `region = asia-northeast1` |
 
+   **Cloudflare (DNS-only, ADR-0004):** variable set `cloudflare-dns`, applied only to `gcp-staging-foundation` and `gcp-prod-foundation`, with the environment variable `CLOUDFLARE_API_TOKEN` (sensitive). The token needs Zone DNS Edit and Zone Read on `cloudanzen.com` only. It is read by the provider, so it never appears in plans or state.
+
 4. Apply in order, reviewing each plan: `gcp-org-projects`, then `gcp-platform-foundation`, then `gcp-staging-foundation`, then `gcp-prod-foundation`. If `cloudanzen-staging` or `cloudanzen-prod` is already taken globally, override `environment_projects`.
 5. Publish the `nat_ip_addresses` output for customer allowlisting.
 6. Seed staging secret versions through the protected runbook (names in the environment root's `secret_ids`; mapping in `docs/configuration-inventory.csv`).
-7. `gcp-platform-bootstrap`: installs Argo CD, which then syncs `gitops/` (projects, namespace baseline, cert-manager, External Secrets, CloudNativePG and the Barman Cloud plugin).
+7. `gcp-platform-bootstrap`: installs Argo CD, which then syncs `gitops/` (projects, namespace baseline, cert-manager, External Secrets, CloudNativePG and the Barman Cloud plugin, the shared Gateway).
+8. **Edge order:** apply `gcp-platform-foundation` (address, certificate map, TLS policy) before an environment root adds its certificate, map entry and DNS records. A new Google-managed certificate can take several minutes to an hour to become active after its DNS authorization record resolves.
 
 ## Not yet included
 

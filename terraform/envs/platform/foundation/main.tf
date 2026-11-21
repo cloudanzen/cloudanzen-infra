@@ -11,6 +11,7 @@ module "services" {
   project_id = var.project_id
   services = [
     "artifactregistry.googleapis.com",
+    "certificatemanager.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
@@ -98,4 +99,44 @@ resource "google_project_iam_member" "node_default_role" {
   project = var.project_id
   role    = "roles/container.defaultNodeServiceAccount"
   member  = local.node_service_account
+}
+
+# Shared Gateway edge (ADR-0004, ADR-0006). One global external Application
+# Load Balancer serves every environment: Argo owns the Gateway object in the
+# gateway namespace, and these are the Terraform-owned pieces it references
+# by name. Each environment root adds its own certificate, certificate map
+# entry and DNS records, so staging changes never plan against production.
+resource "google_compute_global_address" "gateway" {
+  project      = var.project_id
+  name         = "cloudanzen-gateway"
+  description  = "Shared GKE Gateway (gitops/platform/gateway)"
+  address_type = "EXTERNAL"
+  ip_version   = "IPV4"
+  labels       = local.labels
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [module.services]
+}
+
+resource "google_certificate_manager_certificate_map" "gateway" {
+  project     = var.project_id
+  name        = "cloudanzen-gateway"
+  description = "Certificates served by the shared GKE Gateway; entries per environment"
+  labels      = local.labels
+
+  depends_on = [module.services]
+}
+
+# TLS 1.2 or later with the MODERN cipher profile; the default policy still
+# accepts TLS 1.0.
+resource "google_compute_ssl_policy" "gateway" {
+  project         = var.project_id
+  name            = "cloudanzen-gateway"
+  profile         = "MODERN"
+  min_tls_version = "TLS_1_2"
+
+  depends_on = [module.services]
 }

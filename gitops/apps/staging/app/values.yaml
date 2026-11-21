@@ -37,6 +37,12 @@ backend:
 
 priorityClassName: cloudanzen-staging
 
-# Enabled once the shared Gateway, staging certificates and DNS exist.
+# Routes attach to the shared Gateway's staging listener
+# (gitops/platform/gateway), which admits only this namespace. Certificates
+# and DNS for *.staging.cloudanzen.com come from Terraform.
 gateway:
-  enabled: false
+  enabled: true
+  parentRef:
+    name: cloudanzen
+    namespace: gateway
+    sectionName: https-staging

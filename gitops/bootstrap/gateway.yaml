@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway
+  namespace: argocd
+  annotations:
+    # After the namespace baseline; before the workload Applications whose
+    # HTTPRoutes attach to it.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/cloudanzen/cloudanzen-infra.git
+    targetRevision: main
+    path: gitops/platform/gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gateway
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
