@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 7.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -18,3 +22,8 @@ provider "google" {
     system     = "cloudanzen"
   }
 }
+
+# Reads CLOUDFLARE_API_TOKEN from the environment (HCP variable set
+# cloudflare-dns, sensitive). The token never becomes a Terraform variable,
+# so it is not in plans or state.
+provider "cloudflare" {}

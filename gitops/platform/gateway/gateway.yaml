@@ -1,0 +1,79 @@
+# Shared GKE Gateway (ADR-0004, ADR-0006): one global external Application
+# Load Balancer for every environment. Terraform owns what this references
+# by name in cloudanzen-gke (platform foundation root):
+#   - global address        cloudanzen-gateway
+#   - certificate map       cloudanzen-gateway (one entry per environment,
+#                           added by each environment's foundation root)
+#   - SSL policy            cloudanzen-gateway (TLS 1.2+, MODERN)
+# Argo owns this Gateway; workload charts own their HTTPRoutes. Each HTTPS
+# listener admits routes from one environment namespace only, so a staging
+# route cannot claim a production hostname. TLS terminates here; Cloudflare
+# is DNS-only in M1.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+  labels:
+    cloudanzen.io/component: gateway
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: cloudanzen
+  namespace: gateway
+  annotations:
+    networking.gke.io/certmap: cloudanzen-gateway
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  addresses:
+    - type: NamedAddress
+      value: cloudanzen-gateway
+  listeners:
+    # Plain HTTP only redirects to HTTPS (route below).
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # Certificates come from the certificate map, so HTTPS listeners carry
+    # no tls block.
+    - name: https-staging
+      protocol: HTTPS
+      port: 443
+      hostname: "*.staging.cloudanzen.com"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: cloudanzen-staging
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-to-https
+  namespace: gateway
+spec:
+  parentRefs:
+    - name: cloudanzen
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+apiVersion: networking.gke.io/v1
+kind: GCPGatewayPolicy
+metadata:
+  name: cloudanzen
+  namespace: gateway
+spec:
+  default:
+    sslPolicy: cloudanzen-gateway
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: cloudanzen

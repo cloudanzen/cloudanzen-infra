@@ -394,7 +394,7 @@ At about 7 engineer-days per week, the expected M1 staging total is about 9 week
 
 | Decision | Recommended default | Needed before |
 | --- | --- | --- |
-| Customer host suffix and staging suffix | **Decided:** `*.app.cloudanzen.com` and `*.staging.app.cloudanzen.com` | — |
+| Customer host suffix and staging suffix | **Decided:** `*.app.cloudanzen.com` and `*.staging.app.cloudanzen.com`; staging system hosts `app.`, `api.` and `platform.staging.cloudanzen.com` (2026-11-21) | — |
 | Canary and admin hostnames | **Decided:** `app.cloudanzen.com` (canary) and `platform.cloudanzen.com` (admin) after a planned cutover; temporary `app-next`/`platform-next` names until then | Cutover approval and a new home for legacy users |
 | Cluster topology | **Decided:** one shared cluster for staging and production (ADR-0006); no second cluster planned | — |
 | Terraform state backend | Keep HCP Terraform Free while under 500 managed resources; documented GCS backend as the alternative | PR4 |

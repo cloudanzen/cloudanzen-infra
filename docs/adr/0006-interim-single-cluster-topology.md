@@ -22,7 +22,7 @@ Run one GKE Autopilot cluster in a dedicated platform project. Staging and produ
 | Data | Separate CloudNativePG cluster, Redis and backup bucket per namespace; no cross-namespace database access |
 | Network | Default-deny NetworkPolicies per namespace; no traffic between staging and production namespaces |
 | Capacity | ResourceQuota and LimitRange per namespace; a higher PriorityClass for production so staging is evicted first under pressure |
-| Routing | Separate HTTPRoutes and certificates per environment hostname; staging uses `*.staging.app.cloudanzen.com` |
+| Routing | One shared Gateway (global external Application Load Balancer) with one HTTPS listener per environment; each listener admits routes only from that environment's namespace. Separate certificates per environment. Staging system hosts are `app.`, `api.` and `platform.staging.cloudanzen.com` (wildcard certificate `*.staging.cloudanzen.com`, confirmed 2026-11-21); staging tenant workspaces use `*.staging.app.cloudanzen.com` and get their own certificate entry with M2 |
 | Human access | No standing cluster-admin; namespace-scoped roles; break-glass access is time-limited and audited |
 
 ## Consequences

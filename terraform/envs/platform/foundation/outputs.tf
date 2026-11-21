@@ -27,3 +27,23 @@ output "nat_ip_addresses" {
   description = "Static egress addresses to publish for customer allowlisting."
   value       = module.network.nat_ip_addresses
 }
+
+output "gateway_address" {
+  description = "Shared Gateway IPv4 address; environment roots point their DNS records here."
+  value       = google_compute_global_address.gateway.address
+}
+
+output "gateway_address_name" {
+  description = "Global address name the Gateway references (spec.addresses NamedAddress)."
+  value       = google_compute_global_address.gateway.name
+}
+
+output "gateway_certificate_map" {
+  description = "Certificate map name the Gateway references (networking.gke.io/certmap)."
+  value       = google_certificate_manager_certificate_map.gateway.name
+}
+
+output "gateway_ssl_policy" {
+  description = "SSL policy name the Gateway references (GCPGatewayPolicy)."
+  value       = google_compute_ssl_policy.gateway.name
+}

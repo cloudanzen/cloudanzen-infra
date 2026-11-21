@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
-  description: Cluster-wide operators and the environment baseline
+  description: Cluster-wide operators, the environment baseline and the shared Gateway
   sourceRepos:
     - https://github.com/cloudanzen/cloudanzen-infra.git
     - https://charts.jetstack.io
@@ -20,6 +20,8 @@ spec:
       namespace: external-secrets
     - server: https://kubernetes.default.svc
       namespace: cnpg-system
+    - server: https://kubernetes.default.svc
+      namespace: gateway
     - server: https://kubernetes.default.svc
       namespace: cloudanzen-staging
     - server: https://kubernetes.default.svc

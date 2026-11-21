@@ -17,3 +17,8 @@ output "secret_ids" {
   description = "Secret containers to seed (names only)."
   value       = module.env.secret_ids
 }
+
+output "hostnames" {
+  description = "Public hostnames for this environment."
+  value       = module.edge.hostnames
+}

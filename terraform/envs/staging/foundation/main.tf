@@ -53,3 +53,16 @@ module "env" {
 
   depends_on = [module.services]
 }
+
+# Public hostnames for this environment on the shared Gateway (ADR-0004).
+# The certificate map entry and certificate live in the cluster project; the
+# A records point at the Gateway address the platform foundation reserves.
+module "edge" {
+  source             = "../../../modules/env-edge"
+  cluster_project_id = var.cluster_project_id
+  environment        = local.environment
+  zone_name          = "cloudanzen.com"
+  base_domain        = "staging.cloudanzen.com"
+  hostnames          = ["app", "api", "platform"]
+  labels             = { component = "env-edge", environment = local.environment }
+}
